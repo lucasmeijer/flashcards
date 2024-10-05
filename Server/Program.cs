@@ -10,7 +10,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseHealthChecks("/up");
 app.MapPost("/photos", () =>
 {
     return new Deck("Lichaamsdelen", 

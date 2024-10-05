@@ -1,6 +1,6 @@
 ﻿# Learn about building .NET container images:
 # https://github.com/dotnet/dotnet-docker/blob/main/samples/README.md
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /source
 
 # copy csproj and restore as distinct layers
@@ -15,7 +15,7 @@ COPY . .
 RUN dotnet publish -a arm64 --no-restore -o /app Server/Server.csproj
 
 # final stage/image
-FROM --platform=arm64 mcr.microsoft.com/dotnet/aspnet:9.0-jammy
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-jammy-arm64v8
 EXPOSE 8080
 WORKDIR /app
 

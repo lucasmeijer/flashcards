@@ -1,5 +1,9 @@
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
+
+builder.Services.AddHealthChecks().AddCheck("Health", () => HealthCheckResult.Healthy("OK"));
 
 var app = builder.Build();
 

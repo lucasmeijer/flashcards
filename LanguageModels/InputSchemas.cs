@@ -47,20 +47,36 @@ static class InputSchemas
                 return InputSchemaFor(inputSchemaProperty.Type);
             
             result["type"] = type;
+            
+            if (type == "array")
+                result["items"] = InputSchemaFor(inputSchemaProperty.Type.GetElementType() ?? throw new Exception("array without elementtype"));
+
             return result;
         }
     }
 
-    static JsonObject InputSchemaFor(Type t) =>
-        InputSchemaFor(t
+    static JsonObject InputSchemaFor(Type t)
+    {
+        var inputSchemaProperties = t
             .GetProperties()
-            .Select(p => new InputSchemaProperty(
-                Name: p.Name.ToLower(),
-                DescriptionForLanguageModel: p.GetCustomAttribute<DescriptionForLanguageModel>(),
-                Type: p.PropertyType, 
-                Required: true)
-            )
-            .ToArray());
+            .Select(p =>
+            {
+                var matchingConstructorParameter = t.GetConstructors()
+                    .FirstOrDefault()?
+                    .GetParameters()
+                    .FirstOrDefault(pa => string.Equals(pa.Name, p.Name, StringComparison.CurrentCultureIgnoreCase))
+                    ?.GetCustomAttribute<DescriptionForLanguageModel>();
+                
+                return new InputSchemaProperty(
+                    Name: p.Name.ToLower(),
+                    DescriptionForLanguageModel: p.GetCustomAttribute<DescriptionForLanguageModel>() ?? matchingConstructorParameter,
+                    Type: p.PropertyType,
+                    Required: true);
+            })
+            .ToArray();
+        
+        return InputSchemaFor(inputSchemaProperties);
+    }
 
     static string TypeFor(Type t)
     {
@@ -73,7 +89,7 @@ static class InputSchemas
         if (t == typeof(bool))
             return "boolean";
         if (t.IsArray)
-            throw new NotSupportedException("Arrays not yet supported");
+            return "array";
         return "object";
     }
 }

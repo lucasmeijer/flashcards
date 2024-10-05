@@ -25,7 +25,9 @@ public static class CSharpBackedFunctions
                 attribute.Description,
                 JsonDocument.Parse(InputSchemas.InputSchemaFor(methodInfo).ToJsonString()), 
                 methodInfo.GetCustomAttribute<RequiresExplicitApproval>() != null,
-                jsonArguments => Implementation(methodInfo, o, jsonArguments));
+                methodInfo.ReturnType == typeof(void)
+                    ? null
+                    : jsonArguments => Implementation(methodInfo, o, jsonArguments));
             yield return functionFor;
         }
     }

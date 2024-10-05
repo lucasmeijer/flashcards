@@ -8,7 +8,7 @@ COPY Server/Server.csproj ./Server/
 COPY LanguageModels/LanguageModels.csproj ./LanguageModels/
 COPY Directory.Build.props ./
 
-RUN dotnet restore -a $TARGETARCH Server/Server.csproj
+RUN dotnet restore -a arm64 Server/Server.csproj
 
 # copy everything else and build app
 COPY . .

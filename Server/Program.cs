@@ -21,10 +21,10 @@ app.UseHealthChecks("/up");
 
 app.MapPost("/fake", () =>
 {
-    return new Quiz("Nederlands", "Neppe quiz", [
+    return Results.Json(new Quiz("Nederlands", "Neppe quiz", [
         new("wie is de beste", "lucas", "staat in je boek"),
         new("wat is 4+4", "8", "is gewoon zo")
-    ]);
+    ]));
 });
 
 app.MapPost("/photos", async (HttpRequest request, AnthropicLanguageModels models, CancellationToken cancellationToken) =>

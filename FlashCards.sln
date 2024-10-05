@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{DC0AABDA-7DC0-4AB9-B8DB-D7873082C870}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LanguageModels", "LanguageModels\LanguageModels.csproj", "{3EFA66C0-5518-4F65-85B2-3BA6E2488F91}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DC0AABDA-7DC0-4AB9-B8DB-D7873082C870}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC0AABDA-7DC0-4AB9-B8DB-D7873082C870}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC0AABDA-7DC0-4AB9-B8DB-D7873082C870}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC0AABDA-7DC0-4AB9-B8DB-D7873082C870}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EFA66C0-5518-4F65-85B2-3BA6E2488F91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EFA66C0-5518-4F65-85B2-3BA6E2488F91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EFA66C0-5518-4F65-85B2-3BA6E2488F91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EFA66C0-5518-4F65-85B2-3BA6E2488F91}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

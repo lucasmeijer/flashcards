@@ -1,0 +1,31 @@
+#file: noinspection YAMLSchemaValidation,SpellCheckingInspection
+service: flashcards
+image: lucasmeijer/flashcards
+
+builder:
+  arch: arm64
+
+servers:
+  - 94.130.169.26    
+
+volumes:
+  - "/persistent_storage_flashcards:/persistent_storage"
+  
+registry:
+  server: ghcr.io
+  username: lucasmeijer
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+env:
+    clear:
+      PERSISTENT_STORAGE: /persistent_storage
+    secret:
+      - ANTHROPIC_API_KEY
+
+proxy:
+  ssl: true
+  host: flashcards.lucasmeijer.com
+  app_port: 8080
+  healthcheck:
+    path: /up

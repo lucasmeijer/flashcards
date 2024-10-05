@@ -23,7 +23,9 @@ app.MapPost("/fake", () =>
 {
     return Results.Json(new Quiz("Nederlands", "Neppe quiz", [
         new("wie is de beste", "lucas", "staat in je boek"),
-        new("wat is 4+4", "8", "is gewoon zo")
+        new("wat is 4+4", "8", "is gewoon zo"),
+        new("leg uit wat plagiaat is", "dat je iets pikt van een ander zonder te zeggen dat dat zo is", "pagina 3"),
+        new("wat is lucas zn programmeertaal","C#", "lucas vragen"),
     ]));
 });
 

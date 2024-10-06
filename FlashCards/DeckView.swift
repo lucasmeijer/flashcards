@@ -41,7 +41,7 @@ struct CardView: View {
         .cornerRadius(10)
         .rotationEffect(.degrees(card.initialRotation + Double(card.offset.width / 20)))
         .offset(x: card.offset.width, y: card.offset.height)
-        .shadow(radius: 2)
+        .shadow(color: Color.black.opacity(0.1), radius: 2)
 //        .shadow(radius: shouldShowShadow ? 10 : 0)
 //        .onChange(of: shouldShowShadow) { _, newValue in
 //            withAnimation(.easeInOut(duration: 0.5))
@@ -100,7 +100,7 @@ struct DeckView: View {
     
     init(deck: Deck) {
         self.deck = deck
-        
+       
         let pastelColors: [Color] = [
             Color(red: 0.996, green: 0.906, blue: 0.929), // Soft Pink
             Color(red: 0.929, green: 0.965, blue: 0.996), // Baby Blue
@@ -123,8 +123,14 @@ struct DeckView: View {
             Text(deck.title)
             Spacer()
             ZStack {
-                Text("Congratulations! You've gone through all the cards!")
-                    .padding()
+                VStack {
+                    Text("You made it!")
+                        .padding()
+                    Button("Again") {
+                        
+                    }
+                }
+                
                 
                 ForEach(stackedCards, id: \.quizQuestion.id) { card in
                     CardView(card: card) {

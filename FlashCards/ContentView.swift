@@ -1,48 +1,13 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var decks: [Deck] = []
     
     var body: some View {
-        NavigationStack {
-            if decks.isEmpty {
-                CreateNewDeckView(decks: $decks)
-            } else {
-                List {
-                    Section(header: Text("Decks")) {
-                        NavigationLink(destination: CreateNewDeckView(decks: $decks)) {
-                            Text("Make new Flash Cards")
-                        }
-                        
-                        ForEach(decks) { deck in
-                            NavigationLink(destination: DeckView(deck: $decks[getDeckIndex(deck)])) {
-                                Text(deck.title)
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("Flashcard Decks")
-            }
-        }
-        .onAppear(perform: loadDecks)
-    }
-    
-    func getDeckIndex(_ deck: Deck) -> Int {
-        print("Getting index for deck with title: \(deck.title)")
-        return decks.firstIndex(where: { $0.id == deck.id }) ?? 0
-    }
-    
-    func loadDecks() {
-        if let savedDecks = UserDefaults.standard.data(forKey: "savedDecks") {
-            if let decodedDecks = try? JSONDecoder().decode([Deck].self, from: savedDecks) {
-                decks = decodedDecks
-            }
-        }
+       Text("hallo")
     }
 }
 
 struct CreateNewDeckView: View {
-    @Binding var decks: [Deck]
     @State private var images: [UIImage] = []
     @State private var showImagePicker = false
     @State private var isCreatingDeck = false
@@ -76,15 +41,6 @@ struct CreateNewDeckView: View {
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(images: $images)
-        }
-        .navigationDestination(isPresented: $isCreatingDeck) {
-            DeckView(deck: Binding(get: {
-                decks.last ?? Deck(title: "", questions: [])
-            }, set: { newDeck in
-                if let lastIndex = decks.indices.last {
-                    decks[lastIndex] = newDeck
-            }
-            }))
         }
     }
     
@@ -120,155 +76,56 @@ struct CreateNewDeckView: View {
                 return
             }
             
-            do {
-                let jsonResponse = try JSONDecoder().decode(Deck.self, from: data)
-                DispatchQueue.main.async {
-                    print("Successfully decoded response, adding new deck titled: \(jsonResponse.title)")
-                    decks.append(jsonResponse)
-                    saveDecks(decks)
-                    isCreatingDeck = true
-                }
-            } catch {
-                print("Error decoding response: \(error)")
-            }
+//            do {
+//                let jsonResponse = try JSONDecoder().decode(Deck.self, from: data)
+//                DispatchQueue.main.async {
+//                    print("Successfully decoded response, adding new deck titled: \(jsonResponse.title)")
+//                    isCreatingDeck = true
+//                }
+//            } catch {
+//                print("Error decoding response: \(error)")
+//            }
         }.resume()
     }
 }
+//
+//
+//// Add this function at the top level of your file, outside of any struct
+//func saveDecks(_ decks: [Deck]) {
+//    do {
+//        let encodedData = try JSONEncoder().encode(decks)
+//        UserDefaults.standard.set(encodedData, forKey: "savedDecks")
+//        print("Decks saved successfully")
+//    } catch {
+//        print("Error saving decks: \(error.localizedDescription)")
+//    }
+//}
 
 
-// Add this function at the top level of your file, outside of any struct
-func saveDecks(_ decks: [Deck]) {
-    do {
-        let encodedData = try JSONEncoder().encode(decks)
-        UserDefaults.standard.set(encodedData, forKey: "savedDecks")
-        print("Decks saved successfully")
-    } catch {
-        print("Error saving decks: \(error.localizedDescription)")
-    }
-}
 
-
-struct DeckView: View {
-    @Binding var deck: Deck
-    @State private var originalQuestions: [Card] = []
+struct Deck: Identifiable, Decodable {
+    let language: String
+    let title: String
+    let questions: [QuizQuestion]
     
-    var body: some View {
-        VStack {
-            ZStack {
-                ForEach(deck.questions.indices.reversed(), id: \..self) { index in
-                    CardView(card: $deck.questions[index])
-                        .offset(x: 0, y: CGFloat(index) * 5)
-                        .gesture(
-                            DragGesture()
-                                .onChanged { value in
-                                    withAnimation(.interactiveSpring()) {
-                                        print("Dragging card with question: \(deck.questions[index].question)")
-                                        deck.questions[index].offset = value.translation
-                                    }
-                                }
-                                .onEnded { value in
-                                    print("Drag ended for card with question: \(deck.questions[index].question)")
-                                    handleSwipe(value.translation.width, at: index)
-                                    withAnimation(.spring()) {
-                                        deck.questions[index].offset = .zero
-                                    }
-                                }
-                        )
-                        .animation(.spring(), value: deck.questions[index].offset)
-                }
-            }
-            .padding()
-        }
-        .navigationTitle(deck.title)
-    }
-    
-    func handleSwipe(_ width: CGFloat, at index: Int) {
-        if width < -100 {
-            print("Swiped left on card with question: \(deck.questions[index].question), discarding it")
-            deck.questions.remove(at: index)
-            
-            // If all cards are swiped away, refill the deck with the original cards
-            if deck.questions.isEmpty {
-                deck.questions = originalQuestions
-                print("All cards swiped away. Refilling deck with original cards.")
-            }
-        } else if width > 100 {
-            print("Swiped right on card with question: \(deck.questions[index].question), moving it to the bottom")
-            let card = deck.questions.remove(at: index)
-            deck.questions.insert(card, at: 0)
-        }
-    }
-}
-
-struct CardView: View {
-    @Binding var card: Card
-    @State private var showAnswer = false
-    
-    var body: some View {
-        VStack {
-            if showAnswer {
-                Text(card.answer)
-                    .font(.title)
-                    .padding()
-            } else {
-                Text(card.question)
-                    .font(.title)
-                    .padding()
-            }
-        }
-        .frame(width: 300, height: 200)
-        .background(Color.blue)
-        .cornerRadius(10)
-        .shadow(radius: 5)
-        .offset(card.offset)
-        .onTapGesture {
-            withAnimation {
-                showAnswer.toggle()
-                print("Card tapped. Showing answer: \(showAnswer)")
-            }
-        }
-    }
-}
-
-struct Deck: Codable, Identifiable {
     var id: String {
-        let concatenatedString = title + questions.map { $0.question }.joined(separator: "_")
+        let concatenatedString = language + title + questions.map { $0.question }.joined(separator: "_")
         return String(concatenatedString.hashValue)
     }
-    
-    var title: String
-    var questions: [Card]
 }
 
-struct Card: Codable, Identifiable {
+
+struct QuizQuestion: Identifiable, Decodable {
+    let question: String
+    let answer: String
+    let locationofanswerinmaterial: String
+    
     var id: String {
-        return "\(question.hashValue)_\(answer.hashValue)"
+        return "\(question.hashValue)_\(answer.hashValue)_\(locationofanswerinmaterial.hashValue)"
     }
-    
-    var question: String
-    var answer: String
-    var locationofanswerinmaterial: String?
-    var offset: CGSize = .zero
-    
-    enum CodingKeys: String, CodingKey {
-        case question, answer, locationofanswerinmaterial
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        question = try container.decode(String.self, forKey: .question)
-        answer = try container.decode(String.self, forKey: .answer)
-        locationofanswerinmaterial = try container.decodeIfPresent(String.self, forKey: .locationofanswerinmaterial)
-    }
-
-    init(question: String, answer: String, locationofanswerinmaterial: String? = nil) {
-      self.question = question
-      self.answer = answer
-      self.locationofanswerinmaterial = locationofanswerinmaterial
-    }
-
 }
+
+
 
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var images: [UIImage]

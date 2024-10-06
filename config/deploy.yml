@@ -27,5 +27,6 @@ proxy:
   ssl: true
   host: flashcards.lucasmeijer.com
   app_port: 8080
+  response_timeout: 600
   healthcheck:
     path: /up

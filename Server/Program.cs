@@ -8,6 +8,13 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddCheck("Health", () => HealthCheckResult.Healthy("OK"));
 builder.Services.AddLanguageModels();
 
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10);
+    serverOptions.Limits.MaxRequestBodySize = null;
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -29,66 +36,70 @@ app.MapPost("/fake", () =>
     ]));
 });
 
-app.MapPost("/photos", async (HttpRequest request, AnthropicLanguageModels models, CancellationToken cancellationToken) =>
-{
-    var form = await request.ReadFormAsync(cancellationToken);
-
-    var functions = CSharpBackedFunctions.Create([new Functions2()]);
-    
-    var cr = new ChatRequest()
+app.MapPost("/photos",
+    async (HttpRequest request, AnthropicLanguageModels models, CancellationToken cancellationToken) =>
     {
-        SystemPrompt = "You are a excellent empathetic tutor that helps students learn",
-        Messages = [
-            new ChatMessage("user", $"""
-                                    You will receive one or more photos taken of learning material, often a school book.
-                                    Your job is to read all the learning material, and produce a series of quiz questions that can be used by a student to quiz themselves to see if they understand the material.
+        var form = await request.ReadFormAsync(cancellationToken);
 
-                                    You should think in steps:
-                                    - write the language used by the learning material in <language></language>
-                                    - use this language for all your quiz questions and quiz answers.
-                                    - read the material closely, and write a structured overview of the material in <structuredoverview>.
-                                    - write the topic of the learning material into <topic></topic>
-                                    - first lets only write the questions for the quiz into <questions></questions>. 
-                                      Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
-                                    - now call the {functions.Single().Name} tool. 
-                                    """),
-            ..await Task.WhenAll(form.Files.Select(async f => await ImageMessageFor(f.OpenReadStream())))
-        ],
-        Functions = functions,
-        Temperature = 0.5f,
-        //MandatoryFunction = functions.Single()
-    };
-    
-    await using var result = models.Sonnet35.Execute(cr, cancellationToken);
+        var functions = CSharpBackedFunctions.Create([new Functions2()]);
 
-    await foreach (var message in result.ReadCompleteMessagesAsync())
-    {
-        if (message is ChatMessage cm)
-            Console.WriteLine(cm.Text);
-        
-        if (message is FunctionInvocation functionInvocation)
+        var cr = new ChatRequest()
         {
-            var s= JsonSerializer.Serialize(functionInvocation.Parameters.RootElement, new JsonSerializerOptions { WriteIndented = true });
-            Console.WriteLine(s);
-            
-            var options = new JsonSerializerOptions
+            SystemPrompt = "You are a excellent empathetic tutor that helps students learn",
+            Messages =
+            [
+                new ChatMessage("user", $"""
+                                         You will receive one or more photos taken of learning material, often a school book.
+                                         Your job is to read all the learning material, and produce a series of quiz questions that can be used by a student to quiz themselves to see if they understand the material.
+
+                                         You should think in steps:
+                                         - write the language used by the learning material in <language></language>
+                                         - use this language for all your quiz questions and quiz answers.
+                                         - read the material closely, and write a structured overview of the material in <structuredoverview>.
+                                         - write the topic of the learning material into <topic></topic>
+                                         - first lets only write the questions for the quiz into <questions></questions>. 
+                                           Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
+                                         - now call the {functions.Single().Name} tool. 
+                                         """),
+                ..await Task.WhenAll(form.Files.Select(async f => await ImageMessageFor(f.OpenReadStream())))
+            ],
+            Functions = functions,
+            Temperature = 0.5f,
+            //MandatoryFunction = functions.Single()
+        };
+
+        await using var result = models.Sonnet35.Execute(cr, cancellationToken);
+
+        await foreach (var message in result.ReadCompleteMessagesAsync())
+        {
+            if (message is ChatMessage cm)
+                Console.WriteLine(cm.Text);
+
+            if (message is FunctionInvocation functionInvocation)
             {
-                PropertyNameCaseInsensitive = true
-            };
-            var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options);
-            return Results.Json(quiz);
+                var s = JsonSerializer.Serialize(functionInvocation.Parameters.RootElement,
+                    new JsonSerializerOptions { WriteIndented = true });
+                Console.WriteLine(s);
+
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options);
+
+                return Results.Json(quiz);
+            }
         }
-    }
 
-    return Results.InternalServerError("No functioncall");
+        return Results.InternalServerError("No functioncall");
 
-    async Task<ImageMessage> ImageMessageFor(Stream s)
-    {
-        var ms = new MemoryStream();
-        await s.CopyToAsync(ms);
-        return new("user", "image/jpeg", Convert.ToBase64String(ms.ToArray()));
-    }
-});
+        async Task<ImageMessage> ImageMessageFor(Stream s)
+        {
+            var ms = new MemoryStream();
+            await s.CopyToAsync(ms);
+            return new("user", "image/jpeg", Convert.ToBase64String(ms.ToArray()));
+        }
+    }); 
 
 app.Run();
 

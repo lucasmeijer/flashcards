@@ -27,38 +27,58 @@ struct UploadPhotosView: View {
                 .scaleEffect(2)
             Spacer()
         }.onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                let fullDeck = DeckPackage.init(quiz: dummyDeck().quiz, creationDate: Date(),images: [])
-                let partialDeck = DeckStorage.shared.saveDeckPackage(deckPackage:fullDeck)
-                let route = Route.deck(deck: partialDeck)
-                path.append(route)
-            }
+            uploadPhotos()
         }
     }
     
     func uploadPhotos() {
-        guard let url = URL(string: "https://flashcards.lucasmeijer.com/fake") else {
+        guard let url = URL(string: "https://flashcards.lucasmeijer.com/photos") else {
             print("Invalid URL")
             return
         }
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
-        // Assuming images are to be sent as base64 encoded strings in JSON
-        let imageData = images.compactMap { $0.jpegData(compressionQuality: 0.8)?.base64EncodedString() }
-        let json: [String: Any] = ["images": imageData]
+        var body = Data()
         
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: json, options: [])
-        } catch {
-            print("Error creating JSON body: \(error)")
-            return
+        for (index, image) in images.enumerated() {
+            if let imageData = image.jpegData(compressionQuality: 0.5) {
+                body.append("--\(boundary)\r\n".data(using: .utf8)!)
+                body.append("Content-Disposition: form-data; name=\"image\(index)\"; filename=\"image\(index).jpg\"\r\n".data(using: .utf8)!)
+                body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+                body.append(imageData)
+                body.append("\r\n".data(using: .utf8)!)
+            }
         }
+        
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("Error with HTTP request: \(error)")
+                return
+            }
+            
+            if let data2 = data {
+                // Print JSON string representation
+                if let jsonString = String(data: data2, encoding: .utf8) {
+                    print("JSON received: \(jsonString)")
+                } else {
+                    print("Unable to convert data to string")
+                }
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Invalid response")
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                print("HTTP Error: \(httpResponse.statusCode)")
                 return
             }
             
@@ -67,9 +87,15 @@ struct UploadPhotosView: View {
                 return
             }
             
+            
             do {
                 let quiz = try JSONDecoder().decode(Quiz.self, from: data)
+                
                 DispatchQueue.main.async {
+                    let fullDeck = DeckPackage(quiz: quiz, creationDate: Date(), images: images)
+                    let partialDeck = DeckStorage.shared.saveDeckPackage(deckPackage: fullDeck)
+                    let route = Route.deck(deck: partialDeck)
+                    path.append(route)
                 }
             } catch {
                 print("Error decoding response: \(error)")

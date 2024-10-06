@@ -22,10 +22,10 @@ struct Quiz: Identifiable, Decodable, Encodable {
 struct QuizQuestion: Identifiable, Decodable, Encodable {
     let question: String
     let answer: String
-    let locationofanswerinmaterial: String
+    let locationOfAnswerInMaterial: String?
     
     var id: String {
-        return "\(question.hashValue)_\(answer.hashValue)_\(locationofanswerinmaterial.hashValue)"
+        return "\(question.hashValue)_\(answer.hashValue)_\(locationOfAnswerInMaterial.hashValue)"
     }
 }
 

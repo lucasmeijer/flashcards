@@ -169,44 +169,44 @@ func dummyDeck() -> PartialDeckPackage
     let funnyQuestions = [
         QuizQuestion(question: "Why don't scientists trust atoms?",
              answer: "Because they make up everything!",
-             locationofanswerinmaterial: "Chapter 1"
+             locationOfAnswerInMaterial: "Chapter 1"
              ),
         
         QuizQuestion(question: "What do you call a fake noodle?",
              answer: "An impasta!",
-             locationofanswerinmaterial: "Chapter 2"
+                     locationOfAnswerInMaterial: "Chapter 2"
              ),
         QuizQuestion(question: "Why did the scarecrow win an award?",
              answer: "He was outstanding in his field!",
-             locationofanswerinmaterial: "Chapter 3"
+                     locationOfAnswerInMaterial: "Chapter 3"
              ),
         QuizQuestion(question: "Why don't eggs tell jokes?",
              answer: "They'd crack each other up!",
-             locationofanswerinmaterial: "Chapter 4"
+                     locationOfAnswerInMaterial: "Chapter 4"
              ),
         QuizQuestion(question: "What do you call a bear with no teeth?",
              answer: "A gummy bear!",
-             locationofanswerinmaterial: "Chapter 5"
+                     locationOfAnswerInMaterial: "Chapter 5"
              ),
         QuizQuestion(question: "Why did the math book look so sad?",
              answer: "Because it had too many problems!",
-             locationofanswerinmaterial: "Chapter 6"
+                     locationOfAnswerInMaterial: "Chapter 6"
              ),
         QuizQuestion(question: "What do you call a sleeping bull?",
              answer: "A bulldozer!",
-             locationofanswerinmaterial: "Chapter 7"
+                     locationOfAnswerInMaterial: "Chapter 7"
              ),
         QuizQuestion(question: "Why can't a nose be 12 inches long?",
              answer: "Because then it would be a foot!",
-             locationofanswerinmaterial: "Chapter 8"
+                     locationOfAnswerInMaterial: "Chapter 8"
              ),
         QuizQuestion(question: "What do you call a can opener that doesn't work?",
              answer: "A can't opener!",
-             locationofanswerinmaterial: "Chapter 9"
+                     locationOfAnswerInMaterial: "Chapter 9"
              ),
         QuizQuestion(question: "Why did the golfer bring two pairs of pants?",
              answer: "In case he got a hole in one!",
-             locationofanswerinmaterial: "Chapter 10"
+                     locationOfAnswerInMaterial: "Chapter 10"
              )
     ]
     let quiz = Quiz.init(language: "English", title: "Dad Jokes \(Int.random(in: 100...999))", questions: funnyQuestions)

@@ -6,14 +6,12 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             if decks.isEmpty {
-                NavigationLink(destination: AddPhotosView(decks: $decks)) {
-                    Text("Creating a new deck...")
-                }
+                CreateNewDeckView(decks: $decks)
             } else {
                 List {
                     Section(header: Text("Decks")) {
-                        NavigationLink(destination: AddPhotosView(decks: $decks)) {
-                            Text("Make a new deck")
+                        NavigationLink(destination: CreateNewDeckView(decks: $decks)) {
+                            Text("Make new Flash Cards")
                         }
                         
                         ForEach(decks) { deck in
@@ -26,15 +24,24 @@ struct ContentView: View {
                 .navigationTitle("Flashcard Decks")
             }
         }
+        .onAppear(perform: loadDecks)
     }
     
     func getDeckIndex(_ deck: Deck) -> Int {
         print("Getting index for deck with title: \(deck.title)")
         return decks.firstIndex(where: { $0.id == deck.id }) ?? 0
     }
+    
+    func loadDecks() {
+        if let savedDecks = UserDefaults.standard.data(forKey: "savedDecks") {
+            if let decodedDecks = try? JSONDecoder().decode([Deck].self, from: savedDecks) {
+                decks = decodedDecks
+            }
+        }
+    }
 }
 
-struct AddPhotosView: View {
+struct CreateNewDeckView: View {
     @Binding var decks: [Deck]
     @State private var images: [UIImage] = []
     @State private var showImagePicker = false
@@ -44,7 +51,7 @@ struct AddPhotosView: View {
         VStack {
             ScrollView(.horizontal) {
                 HStack {
-                    ForEach(images, id: \..self) { image in
+                    ForEach(images, id: \.self) { image in
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFit()
@@ -76,7 +83,7 @@ struct AddPhotosView: View {
             }, set: { newDeck in
                 if let lastIndex = decks.indices.last {
                     decks[lastIndex] = newDeck
-                }
+            }
             }))
         }
     }
@@ -118,6 +125,8 @@ struct AddPhotosView: View {
                 DispatchQueue.main.async {
                     print("Successfully decoded response, adding new deck titled: \(jsonResponse.title)")
                     decks.append(jsonResponse)
+                    saveDecks(decks)
+                    isCreatingDeck = true
                 }
             } catch {
                 print("Error decoding response: \(error)")
@@ -126,8 +135,22 @@ struct AddPhotosView: View {
     }
 }
 
+
+// Add this function at the top level of your file, outside of any struct
+func saveDecks(_ decks: [Deck]) {
+    do {
+        let encodedData = try JSONEncoder().encode(decks)
+        UserDefaults.standard.set(encodedData, forKey: "savedDecks")
+        print("Decks saved successfully")
+    } catch {
+        print("Error saving decks: \(error.localizedDescription)")
+    }
+}
+
+
 struct DeckView: View {
     @Binding var deck: Deck
+    @State private var originalQuestions: [Card] = []
     
     var body: some View {
         VStack {
@@ -163,6 +186,12 @@ struct DeckView: View {
         if width < -100 {
             print("Swiped left on card with question: \(deck.questions[index].question), discarding it")
             deck.questions.remove(at: index)
+            
+            // If all cards are swiped away, refill the deck with the original cards
+            if deck.questions.isEmpty {
+                deck.questions = originalQuestions
+                print("All cards swiped away. Refilling deck with original cards.")
+            }
         } else if width > 100 {
             print("Swiped right on card with question: \(deck.questions[index].question), moving it to the bottom")
             let card = deck.questions.remove(at: index)
@@ -263,12 +292,12 @@ struct ImagePicker: UIViewControllerRepresentable {
         init(_ parent: ImagePicker) {
             self.parent = parent
         }
-        
+    
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             if let image = info[.originalImage] as? UIImage {
                 parent.images.append(image)
                 print("Image added to the list. Total images: \(parent.images.count)")
-            }
+        }
             picker.dismiss(animated: true)
         }
     }

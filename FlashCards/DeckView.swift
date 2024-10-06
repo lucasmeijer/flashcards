@@ -94,13 +94,14 @@ struct CardView: View {
 }
 
 struct DeckView: View {
-    var deck: Deck
-    
+    var deck: PartialDeckPackage
+    @Binding var path: NavigationPath
     @State private var stackedCards: [Card]
     
-    init(deck: Deck) {
-        self.deck = deck
-       
+    init(deck: PartialDeckPackage, path: Binding<NavigationPath>) {
+         self.deck = deck
+         self._path = path
+        
         let pastelColors: [Color] = [
             Color(red: 0.996, green: 0.906, blue: 0.929), // Soft Pink
             Color(red: 0.929, green: 0.965, blue: 0.996), // Baby Blue
@@ -114,13 +115,12 @@ struct DeckView: View {
             Color(red: 0.976, green: 0.957, blue: 0.929)  // Eggshell
         ]
         
-        let cards = deck.questions.enumerated().map { (index,question) in Card.init(quizQuestion: question, color: pastelColors[index])}
+        let cards = deck.quiz.questions.shuffled().enumerated().map { (index,question) in Card.init(quizQuestion: question, color: pastelColors[index])}
         self._stackedCards = State(initialValue: cards)
     }
     
     var body: some View {
         VStack {
-            Text(deck.title)
             Spacer()
             ZStack {
                 VStack {
@@ -143,14 +143,29 @@ struct DeckView: View {
                 }
             }
             Spacer()
+        }.navigationBarBackButtonHidden()
+            .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                customBackButton
+            }
+        }
+    }
+    
+    private var customBackButton: some View {
+        Button(action: {
+            path = NavigationPath()
+        }) {
+            HStack {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("Back")
+            }
         }
     }
 }
 
-func dummyDeck() -> Deck
+func dummyDeck() -> PartialDeckPackage
 {
-
-    
     let funnyQuestions = [
         QuizQuestion(question: "Why don't scientists trust atoms?",
              answer: "Because they make up everything!",
@@ -194,13 +209,13 @@ func dummyDeck() -> Deck
              locationofanswerinmaterial: "Chapter 10"
              )
     ]
-    
-    return Deck.init(language: "English", title: "Dad Jokes 101", questions: funnyQuestions)
+    let quiz = Quiz.init(language: "English", title: "Dad Jokes \(Int.random(in: 100...999))", questions: funnyQuestions)
+    return .init(quiz:quiz, creationDate: Date())
 
 }
 
 #Preview {
     return NavigationView {
-        DeckView(deck: dummyDeck())
+        DeckView(deck: dummyDeck(), path:.constant(NavigationPath()))
     }
 }

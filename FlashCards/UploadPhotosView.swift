@@ -8,14 +8,17 @@
 import SwiftUI
 
 struct UploadPhotosView: View {
+    @Binding var path: NavigationPath
     let images: [UIImage]
-    @State var navigateToDeckView:Bool = false
+    //@State var navigateToDeckView:Bool = false
+    @State var navigateToDeckDeck:PartialDeckPackage? = nil
     
+    private var shouldNavigate: Bool {
+       get { navigateToDeckDeck != nil }
+       set { navigateToDeckDeck = nil }
+   }
+
     var body: some View {
-        NavigationLink(destination: DeckView(deck:dummyDeck()), isActive: $navigateToDeckView) {
-                       EmptyView()
-        }
-        
         VStack {
             Spacer()
             ScrollingFortuneView()
@@ -25,8 +28,10 @@ struct UploadPhotosView: View {
             Spacer()
         }.onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                DeckStorage.shared.saveDeckPackage(dummyDeck(), images: images)
-                navigateToDeckView = true
+                let fullDeck = DeckPackage.init(quiz: dummyDeck().quiz, creationDate: Date(),images: [])
+                let partialDeck = DeckStorage.shared.saveDeckPackage(deckPackage:fullDeck)
+                let route = Route.deck(deck: partialDeck)
+                path.append(route)
             }
         }
     }
@@ -63,7 +68,7 @@ struct UploadPhotosView: View {
             }
             
             do {
-                let deck = try JSONDecoder().decode(Deck.self, from: data)
+                let quiz = try JSONDecoder().decode(Quiz.self, from: data)
                 DispatchQueue.main.async {
                 }
             } catch {
@@ -168,5 +173,5 @@ struct ScrollingFortuneView: View {
     }
 }
 #Preview {
-    UploadPhotosView(images: [])
+    UploadPhotosView(path:.constant(NavigationPath()), images: [])
 }

@@ -48,7 +48,7 @@ struct TakePhotosView: View {
             }
             .padding(.horizontal)
 
-            NavigationLink(destination: UploadPhotosView(images:images))
+            NavigationLink(value: Route.uploadPhotos(images: images))
             {
                 HStack {
                     Image(systemName: "wand.and.stars")

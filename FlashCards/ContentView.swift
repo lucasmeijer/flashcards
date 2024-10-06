@@ -7,7 +7,7 @@ struct ContentView: View {
     }
 }
 
-struct Deck: Identifiable, Decodable, Encodable {
+struct Quiz: Identifiable, Decodable, Encodable {
     let language: String
     let title: String
     let questions: [QuizQuestion]
@@ -28,7 +28,6 @@ struct QuizQuestion: Identifiable, Decodable, Encodable {
         return "\(question.hashValue)_\(answer.hashValue)_\(locationofanswerinmaterial.hashValue)"
     }
 }
-
 
 
 struct ContentView_Previews: PreviewProvider {

@@ -55,9 +55,9 @@ app.MapPost("/photos",
                                          You should think in steps:
                                          - write the language used by the learning material in <language></language>
                                          - use this language for all your quiz questions and quiz answers.
-                                         - read the material closely, and write a structured overview of the material in <structuredoverview>.
+                                         - read the material closely. If the material looks like it's text based, write a structured overview of the material in <structuredoverview>.
                                          - write the topic of the learning material into <topic></topic>
-                                         - first lets only write the questions for the quiz into <questions></questions>. 
+                                         - first lets only write the questions for the quiz into <questions></questions>. If the material is a vocabulary test, make the questions just be only the input word, and the answer just be the output word. make a question for every vocabulary word in the input material. 
                                            Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
                                          - now call the {functions.Single().Name} tool. 
                                          """),
@@ -121,7 +121,7 @@ class Functions2
     [DescriptionForLanguageModel("Call this function to provide the quiz")]
     public void ProduceQuiz(
         [DescriptionForLanguageModel("The language in which the quiz' questions are written ")] string Language,
-        [DescriptionForLanguageModel("A title for the quiz that can be used in to spot it in a list of many quizes ")] string Title, 
+        [DescriptionForLanguageModel("A short topic for this quiz that fits in a button.")] string Title, 
         [DescriptionForLanguageModel("the actual questions and answers of the quiz")] Question2[] Questions)
     {
     }

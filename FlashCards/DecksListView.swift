@@ -14,10 +14,10 @@ struct DecksListView: View {
             ForEach(deckStorage.decks) { deck in
                 NavigationLink(value: Route.deck(deck: deck)) {
                     ZStack {
-                        Rectangle()
-                            .fill(Color.orange)
-                            .cornerRadius(10)
-                            .frame(width: 400)
+                        //Rectangle()
+                            //.fill(Color.orange)
+                        //    .cornerRadius(10)
+                        //    .frame(width: 400)
                         Text(deck.quiz.title)
                     }
                 }.frame(height:80)

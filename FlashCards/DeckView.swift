@@ -13,6 +13,7 @@ struct Card
 }
 
 struct CardView: View {
+    //@Binding
     @State var card: Card
     @GestureState private var gestureOffset: CGSize = .zero
 
@@ -42,20 +43,13 @@ struct CardView: View {
         .rotationEffect(.degrees(card.initialRotation + Double(card.offset.width / 20)))
         .offset(x: card.offset.width, y: card.offset.height)
         .shadow(color: Color.black.opacity(0.1), radius: 2)
-//        .shadow(radius: shouldShowShadow ? 10 : 0)
-//        .onChange(of: shouldShowShadow) { _, newValue in
-//            withAnimation(.easeInOut(duration: 0.5))
-//            {
-//                shouldShowShadow = newValue
-//            }
-//        }
+
         .gesture(
             DragGesture()
                 .updating($gestureOffset) { value, state, _ in
                     if (!card.discarded) {
                         state = value.translation
                     }
-                    //offset = value.translation
                 }
                 .onChanged { value in
                     card.offset = value.translation
@@ -68,12 +62,15 @@ struct CardView: View {
                         } completion: {
                             onPlaceAtBottom()
                             card.showAnswer = false
-                            withAnimation(.spring()) {
-                                card.offset = .zero
+                            DispatchQueue.main.asyncAfter(deadline: .now()) {
+                                withAnimation(.spring()) {
+                                    card.offset = .zero
+                                }
                             }
                         }
                     } else if value.predictedEndTranslation.width < -200 {
                         card.discarded = true
+                        
                         withAnimation(.spring()) {
                             card.offset = .init(width: -500, height:0)
                         }
@@ -115,7 +112,7 @@ struct DeckView: View {
             Color(red: 0.976, green: 0.957, blue: 0.929)  // Eggshell
         ]
         
-        let cards = deck.quiz.questions.shuffled().enumerated().map { (index,question) in Card.init(quizQuestion: question, color: pastelColors[index])}
+        let cards = deck.quiz.questions.shuffled().enumerated().map { (index,question) in Card.init(quizQuestion: question, color: pastelColors[index % 9])}
         self._stackedCards = State(initialValue: cards)
     }
     
@@ -124,23 +121,30 @@ struct DeckView: View {
             Spacer()
             ZStack {
                 VStack {
+                    
                     Text("You made it!")
-                        .padding()
-                    Button("Again") {
                         
-                    }
+//                    Button(action: {
+//                        for index in stackedCards.indices {
+//                            stackedCards[index].discarded = false
+//                            stackedCards[index].offset = .zero
+//                            stackedCards[index].showAnswer = false
+//                        }
+//                    }) {
+//                        Text("You made it! Let's go again!")
+//                            .padding()
+//                    }
                 }
                 
-                
-                ForEach(stackedCards, id: \.quizQuestion.id) { card in
-                    CardView(card: card) {
-                      //onPlaceAtBottom:
-                        if let index = stackedCards.firstIndex(where: { $0.quizQuestion.id == card.quizQuestion.id }) {
-                           stackedCards.remove(at: index)
-                           stackedCards.insert(card, at: 0)
-                       }
-                    }
-                }
+//                ForEach(stackedCards.indices, id: \.self) { index in
+//                    CardView(card: stackedCards[index]) {
+//                        let card = stackedCards.remove(at: index)
+//                        stackedCards.insert(card, at: 0)
+//                    }
+//                    .onChange(of: stackedCards[index].discarded) {
+//                        checkAllCardsDiscarded()
+//                    }
+//                }
             }
             Spacer()
         }.navigationBarBackButtonHidden()
@@ -150,6 +154,20 @@ struct DeckView: View {
             }
         }
     }
+    
+//    private func checkAllCardsDiscarded() {
+//        if stackedCards.allSatisfy({ $0.discarded }) {
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+//                for index in stackedCards.indices {
+//                    withAnimation(.spring(duration: Double.random(in: 0.5...1.5))) {
+//                        stackedCards[index].discarded = false
+//                        stackedCards[index].offset = .zero
+//                        stackedCards[index].showAnswer = false
+//                    }
+//                }
+//            }
+//        }
+//    }
     
     private var customBackButton: some View {
         Button(action: {

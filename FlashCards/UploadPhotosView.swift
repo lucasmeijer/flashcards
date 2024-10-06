@@ -13,6 +13,8 @@ struct UploadPhotosView: View {
     //@State var navigateToDeckView:Bool = false
     @State var navigateToDeckDeck:PartialDeckPackage? = nil
     
+    @State var displayError: String?
+    
     private var shouldNavigate: Bool {
        get { navigateToDeckDeck != nil }
        set { navigateToDeckDeck = nil }
@@ -21,6 +23,10 @@ struct UploadPhotosView: View {
     var body: some View {
         VStack {
             Spacer()
+            if let error = displayError {
+                Text("Error")
+                Text(error)
+            }
             ScrollingFortuneView()
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle(tint: .blue))
@@ -41,7 +47,7 @@ struct UploadPhotosView: View {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        
+        request.timeoutInterval = 600
         var body = Data()
         
         for (index, image) in images.enumerated() {
@@ -59,7 +65,7 @@ struct UploadPhotosView: View {
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("Error with HTTP request: \(error)")
+                SetDisplayError("Error with HTTP request: \(error)")
                 return
             }
             
@@ -73,17 +79,17 @@ struct UploadPhotosView: View {
             }
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response")
+                SetDisplayError("Invalid response")
                 return
             }
             
             guard (200...299).contains(httpResponse.statusCode) else {
-                print("HTTP Error: \(httpResponse.statusCode)")
+                SetDisplayError("HTTP Error: \(httpResponse.statusCode)")
                 return
             }
             
             guard let data = data else {
-                print("No data received from server")
+                SetDisplayError("No data received from server")
                 return
             }
             
@@ -98,9 +104,16 @@ struct UploadPhotosView: View {
                     path.append(route)
                 }
             } catch {
-                print("Error decoding response: \(error)")
+                SetDisplayError("Error decoding response: \(error)")
             }
         }.resume()
+    }
+    
+    func SetDisplayError(_ msg:String)
+    {
+        DispatchQueue.main.async {
+            self.displayError = msg
+        }
     }
 }
 

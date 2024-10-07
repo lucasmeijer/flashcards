@@ -1,23 +1,28 @@
 import SwiftUI
 
 
-struct Card
-{
-    let quizQuestion: QuizQuestion
-    var offset: CGSize = .zero
-    var color: Color = Color.white
+class Card: ObservableObject, Identifiable{
+    init(quizQuestion: QuizQuestion, color: Color?) {
+        self.quizQuestion = quizQuestion
+        self.color = color ?? Color.white
+    }
     
-    var showAnswer = false
-    var discarded = false
-    var initialRotation = Double.random(in: -5...5)
+    var id:String { quizQuestion.id }
+    let quizQuestion: QuizQuestion
+    let color: Color
+    
+    @Published var offset: CGSize = .zero
+    @Published var showAnswer = false
+    @Published var discarded = false
+    @Published var initialRotation = Double.random(in: -5...5)
 }
 
 struct CardView: View {
-    //@Binding
-    @State var card: Card
+    @ObservedObject var card: Card
     @GestureState private var gestureOffset: CGSize = .zero
 
     var onPlaceAtBottom: () -> Void
+    var onDiscard: () -> Void
     
     var body: some View {
         VStack {
@@ -26,13 +31,17 @@ struct CardView: View {
             ZStack {
                 Text(card.quizQuestion.answer)
                     .padding()
-                
-                Rectangle()
-                    .fill(card.color)
-                    .rotationEffect(.degrees(5))
-                    .frame(height: 100)
-                    .opacity(card.showAnswer ? 0 : 1)
-                    .brightness(0.1)
+                    .background(Color.clear) // This ensures the Text size is calculated correctly
+                    .overlay(
+                        GeometryReader { geometry in
+                            Rectangle()
+                                .fill(card.color)
+                                .rotationEffect(.degrees(5))
+                                .opacity(card.showAnswer ? 0 : 1)
+                                .brightness(0.1)
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                        }
+                    )
             }
             
         }
@@ -70,7 +79,7 @@ struct CardView: View {
                         }
                     } else if value.predictedEndTranslation.width < -200 {
                         card.discarded = true
-                        
+                        onDiscard()
                         withAnimation(.spring()) {
                             card.offset = .init(width: -500, height:0)
                         }
@@ -121,30 +130,16 @@ struct DeckView: View {
             Spacer()
             ZStack {
                 VStack {
-                    
                     Text("You made it!")
-                        
-//                    Button(action: {
-//                        for index in stackedCards.indices {
-//                            stackedCards[index].discarded = false
-//                            stackedCards[index].offset = .zero
-//                            stackedCards[index].showAnswer = false
-//                        }
-//                    }) {
-//                        Text("You made it! Let's go again!")
-//                            .padding()
-//                    }
                 }
                 
-//                ForEach(stackedCards.indices, id: \.self) { index in
-//                    CardView(card: stackedCards[index]) {
-//                        let card = stackedCards.remove(at: index)
-//                        stackedCards.insert(card, at: 0)
-//                    }
-//                    .onChange(of: stackedCards[index].discarded) {
-//                        checkAllCardsDiscarded()
-//                    }
-//                }
+                ForEach(stackedCards) { card in
+                    CardView(card: card) {
+                        moveToBottom(card:card)
+                    } onDiscard: {
+                        resetDeckIfAllCardsAreDiscarded()
+                    }
+                }
             }
             Spacer()
         }.navigationBarBackButtonHidden()
@@ -155,19 +150,29 @@ struct DeckView: View {
         }
     }
     
-//    private func checkAllCardsDiscarded() {
-//        if stackedCards.allSatisfy({ $0.discarded }) {
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-//                for index in stackedCards.indices {
-//                    withAnimation(.spring(duration: Double.random(in: 0.5...1.5))) {
-//                        stackedCards[index].discarded = false
-//                        stackedCards[index].offset = .zero
-//                        stackedCards[index].showAnswer = false
-//                    }
-//                }
-//            }
-//        }
-//    }
+    func resetDeckIfAllCardsAreDiscarded()
+    {
+        if (!stackedCards.allSatisfy { $0.discarded }) {
+            return
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline:  .now() + 1.0) {
+            stackedCards.forEach { card in
+                card.discarded = false
+                withAnimation(.spring(duration: Double.random(in: 0.3...1.3))) {
+                    card.offset = .zero
+                }
+                card.showAnswer = false
+            }
+        }
+    }
+    
+    func moveToBottom(card: Card)
+    {
+        stackedCards.removeAll { $0.id == card.id }
+        stackedCards.insert(card, at: 0)
+    }
+    
     
     private var customBackButton: some View {
         Button(action: {

@@ -1,13 +1,15 @@
 using System.Text.Json;
+using Amazon.BedrockRuntime.Model;
 using LanguageModels;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Server;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddCheck("Health", () => HealthCheckResult.Healthy("OK"));
 builder.Services.AddLanguageModels();
-
+builder.Services.AddSolidGround<PostPhotosParameters>();
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
@@ -36,76 +38,80 @@ app.MapPost("/fake", () =>
     ]));
 });
 
-app.MapPost("/photos",
-    async (HttpRequest request, AnthropicLanguageModels models, CancellationToken cancellationToken) =>
+app.MapPost("/photos", async (PostPhotosParameters postPhotosParameters, AnthropicLanguageModels models, CancellationToken cancellationToken, HttpClient httpClient, HttpContext httpContext) =>
+{
+    var solidGroundPayload = new SolidGroundPayload<PostPhotosParameters>(postPhotosParameters, httpClient);
+    httpContext.Response.OnCompleted(async () => await solidGroundPayload.DisposeAsync());
+    
+    var functions = CSharpBackedFunctions.Create([new Functions2()]);
+    
+    var cr = new ChatRequest()
     {
-        var form = await request.ReadFormAsync(cancellationToken);
+        SystemPrompt = "You are a excellent empathetic tutor that helps students learn",
+        Messages =
+        [
+            new ChatMessage("user", $"""
+                                     You will receive one or more photos taken of learning material, often a school book.
+                                     Your job is to read all the learning material, and produce a series of quiz questions that can be used by a student to quiz themselves to see if they understand the material.
 
-        var functions = CSharpBackedFunctions.Create([new Functions2()]);
+                                     You should think in steps:
+                                     - read the material closely.
+                                     - write into <genre></genre> what kind of learning material is in the photos.
+                                     - if the genre is a vocabulary test, analyze which language is the language to learn, and which is the known language. write to <language_to_learn> and <known_language>.
+                                       use the known language for all your quiz questions and quiz answers.
+                                     - if the genre is not cross language learning, write the language used in the material into <language> and use this for all your quiz questions and quiz answers.
+                                     - If the genre is like a text the student wants to learn, write a structured overview of the material in <structuredoverview>.
+                                     - write the topic of the learning material into <topic></topic>
+                                     - first lets only write the questions for the quiz into <questions></questions>.
+                                     - If the material is a vocabulary test, make the questions just be only the input word, and the answer just be the output word. make a question for every vocabulary word in the input material. 
+                                     - Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
+                                     - now call the {functions.Single().Name} tool. 
+                                     """),
+            ..postPhotosParameters.Images.Select(f => new ImageMessage("user", f.MimeType, f.Base64))
+        ],
+        Functions = functions,
+        Temperature = 0.5f,
+        //MandatoryFunction = functions.Single()
+    };
 
-        var cr = new ChatRequest()
+    solidGroundPayload.AddArtifactJson("prompt", cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)]});
+    
+    await using var result = models.Sonnet35.Execute(cr, cancellationToken);
+
+    await foreach (var message in result.ReadCompleteMessagesAsync())
+    {
+        if (message is ChatMessage cm)
         {
-            SystemPrompt = "You are a excellent empathetic tutor that helps students learn",
-            Messages =
-            [
-                new ChatMessage("user", $"""
-                                         You will receive one or more photos taken of learning material, often a school book.
-                                         Your job is to read all the learning material, and produce a series of quiz questions that can be used by a student to quiz themselves to see if they understand the material.
-
-                                         You should think in steps:
-                                         - read the material closely.
-                                         - write into <genre></genre> what kind of learning material is in the photos.
-                                         - if the genre is a vocabulary test, analyze which language is the language to learn, and which is the known language. write to <language_to_learn> and <known_language>.
-                                           use the known language for all your quiz questions and quiz answers.
-                                         - if the genre is not cross language learning, write the language used in the material into <language> and use this for all your quiz questions and quiz answers.
-                                         - If the genre is like a text the student wants to learn, write a structured overview of the material in <structuredoverview>.
-                                         - write the topic of the learning material into <topic></topic>
-                                         - first lets only write the questions for the quiz into <questions></questions>.
-                                         - If the material is a vocabulary test, make the questions just be only the input word, and the answer just be the output word. make a question for every vocabulary word in the input material. 
-                                         - Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
-                                         - now call the {functions.Single().Name} tool. 
-                                         """),
-                ..await Task.WhenAll(form.Files.Select(async f => await ImageMessageFor(f.OpenReadStream())))
-            ],
-            Functions = functions,
-            Temperature = 0.5f,
-            //MandatoryFunction = functions.Single()
-        };
-
-        await using var result = models.Sonnet35.Execute(cr, cancellationToken);
-
-        await foreach (var message in result.ReadCompleteMessagesAsync())
+            solidGroundPayload.AddArtifact("chatmessage", cm.Text);
+            Console.WriteLine(cm.Text);
+        }
+        
+        if (message is FunctionInvocation functionInvocation)
         {
-            if (message is ChatMessage cm)
-                Console.WriteLine(cm.Text);
+            
+            var s = JsonSerializer.Serialize(functionInvocation.Parameters.RootElement,
+                new JsonSerializerOptions { WriteIndented = true });
+            Console.WriteLine(s);
 
-            if (message is FunctionInvocation functionInvocation)
+            var options = new JsonSerializerOptions
             {
-                var s = JsonSerializer.Serialize(functionInvocation.Parameters.RootElement,
-                    new JsonSerializerOptions { WriteIndented = true });
-                Console.WriteLine(s);
+                PropertyNameCaseInsensitive = true
+            };
+            var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options) ?? throw new InternalServerException("Unparseable functioninvocation");
+            
+            solidGroundPayload.AddResultJson(quiz);
 
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options);
-
-                return Results.Json(quiz);
-            }
+            return Results.Json(quiz);
         }
+    }
 
-        return Results.InternalServerError("No functioncall");
-
-        async Task<ImageMessage> ImageMessageFor(Stream s)
-        {
-            var ms = new MemoryStream();
-            await s.CopyToAsync(ms);
-            return new("user", "image/jpeg", Convert.ToBase64String(ms.ToArray()));
-        }
-    }); 
+    return Results.InternalServerError("No functioncall");
+});
 
 app.Run();
+
+record File(string MimeType, string Base64);
+record PostPhotosParameters(File[] Images);
 
 record Quiz(
     string Language,
@@ -130,4 +136,3 @@ class Functions2
     {
     }
 }
-

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Amazon.BedrockRuntime.Model;
 using LanguageModels;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Server;
@@ -9,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddCheck("Health", () => HealthCheckResult.Healthy("OK"));
 builder.Services.AddLanguageModels();
-builder.Services.AddSolidGround<PostPhotosParameters>();
+builder.Services.AddSolidGround();
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
@@ -38,12 +39,22 @@ app.MapPost("/fake", () =>
     ]));
 });
 
-app.MapPost("/photos", async (PostPhotosParameters postPhotosParameters, AnthropicLanguageModels models, CancellationToken cancellationToken, HttpClient httpClient, HttpContext httpContext) =>
+app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken cancellationToken, HttpRequest httpRequest,
+    SolidGroundPayload solidGroundPayload) =>
 {
-    var solidGroundPayload = new SolidGroundPayload<PostPhotosParameters>(postPhotosParameters, httpClient);
-    httpContext.Response.OnCompleted(async () => await solidGroundPayload.DisposeAsync());
-    
+    await solidGroundPayload.CaptureRequestAsync();
+
+    var form = httpRequest.Form;
+
     var functions = CSharpBackedFunctions.Create([new Functions2()]);
+
+    //var imageMessages = await Task.WhenAll(form.Files.Select(async f => new ImageMessage("user", f.ContentType, await f.ToBase64Async())));
+    var imageMessages = new List<ImageMessage>();
+    foreach (var file in form.Files)
+    {
+        var base64 = await file.ToBase64Async();
+        imageMessages.Add(new ImageMessage("user", file.ContentType, base64));
+    }
     
     var cr = new ChatRequest()
     {
@@ -67,15 +78,16 @@ app.MapPost("/photos", async (PostPhotosParameters postPhotosParameters, Anthrop
                                      - Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
                                      - now call the {functions.Single().Name} tool. 
                                      """),
-            ..postPhotosParameters.Images.Select(f => new ImageMessage("user", f.MimeType, f.Base64))
+            ..imageMessages
         ],
         Functions = functions,
         Temperature = 0.5f,
         //MandatoryFunction = functions.Single()
     };
 
-    solidGroundPayload.AddArtifactJson("prompt", cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)]});
-    
+    solidGroundPayload.AddArtifactJson("prompt",
+        cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)] });
+
     await using var result = models.Sonnet35.Execute(cr, cancellationToken);
 
     await foreach (var message in result.ReadCompleteMessagesAsync())
@@ -85,10 +97,10 @@ app.MapPost("/photos", async (PostPhotosParameters postPhotosParameters, Anthrop
             solidGroundPayload.AddArtifact("chatmessage", cm.Text);
             Console.WriteLine(cm.Text);
         }
-        
+
         if (message is FunctionInvocation functionInvocation)
         {
-            
+
             var s = JsonSerializer.Serialize(functionInvocation.Parameters.RootElement,
                 new JsonSerializerOptions { WriteIndented = true });
             Console.WriteLine(s);
@@ -97,8 +109,9 @@ app.MapPost("/photos", async (PostPhotosParameters postPhotosParameters, Anthrop
             {
                 PropertyNameCaseInsensitive = true
             };
-            var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options) ?? throw new InternalServerException("Unparseable functioninvocation");
-            
+            var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options) ??
+                       throw new InternalServerException("Unparseable functioninvocation");
+
             solidGroundPayload.AddResultJson(quiz);
 
             return Results.Json(quiz);
@@ -106,12 +119,9 @@ app.MapPost("/photos", async (PostPhotosParameters postPhotosParameters, Anthrop
     }
 
     return Results.InternalServerError("No functioncall");
-});
+}).DisableAntiforgery();
 
 app.Run();
-
-record File(string MimeType, string Base64);
-record PostPhotosParameters(File[] Images);
 
 record Quiz(
     string Language,
@@ -134,5 +144,16 @@ class Functions2
         [DescriptionForLanguageModel("A short topic for this quiz that fits in a button.")] string Title, 
         [DescriptionForLanguageModel("the actual questions and answers of the quiz")] Question2[] Questions)
     {
+    }
+}
+
+static class Extensions
+{
+    public static async Task<string> ToBase64Async(this IFormFile self)
+    {
+        await using var fileStream = self.OpenReadStream();
+        using var ms = new MemoryStream();
+        await fileStream.CopyToAsync(ms);
+        return Convert.ToBase64String(ms.ToArray());
     }
 }

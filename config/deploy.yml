@@ -20,7 +20,7 @@ registry:
 env:
     clear:
       PERSISTENT_STORAGE: /persistent_storage
-      SOLIDGROUND_BASE_URL: http://solidground:8080
+      SOLIDGROUND_BASE_URL: https://solidground.flashcards.lucasmeijer.com
     secret:
       - ANTHROPIC_API_KEY
 

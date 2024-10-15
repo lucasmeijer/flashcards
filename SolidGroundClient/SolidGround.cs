@@ -141,8 +141,8 @@ public class SolidGroundSession(
         await httpClient.PostAsJsonAsync($"{_serviceBaseUrl}/api/input", new
         {
             request = _capturedRequest ?? throw new ArgumentException("Captured request is null"),
-            output = _outputs,
-            name = "production",
+            outputs = _outputs,
+            variables = _variables,
         });
     }
     

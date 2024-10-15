@@ -5,6 +5,7 @@ WORKDIR /source
 
 # copy csproj and restore as distinct layers
 COPY Server/Server.csproj ./Server/
+COPY SolidGroundClient/SolidGroundClient.csproj ./SolidGroundClient/
 COPY LanguageModels/LanguageModels.csproj ./LanguageModels/
 COPY Directory.Build.props ./
 

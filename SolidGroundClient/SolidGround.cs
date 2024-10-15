@@ -104,15 +104,16 @@ public class SolidGroundSession(
         {
             ["body_base64"] = Convert.ToBase64String(memoryStream.ToArray()),
             ["content_type"] = Request.ContentType,
-            ["host"] = Request.Host.Value,
+            ["basepath"] = Request.PathBase.Value ?? throw new ArgumentException("Base path cannot be null."),
             ["route"] = Request.Path.Value,
         };
 
         foreach (var variable in variables.Variables)
         {
-            if (!httpContext.Request.Headers.TryGetValue($"SolidGroundVariable_{variable.Name.ToLower()}", out var value))
+            if (!httpContext.Request.Headers.TryGetValue($"SolidGroundVariable_{variable.Name}", out var value))
                 continue;
             variable.SetValue(Encoding.UTF8.GetString(Convert.FromBase64String(value.Single()?.Trim() ?? throw new InvalidOperationException())));
+            _variables[variable.Name] = variable.ValueAsString;
         }
         
         if (_serviceBaseUrl != null || _outputEndPoint != null)

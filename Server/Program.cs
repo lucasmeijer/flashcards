@@ -70,7 +70,7 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
         //MandatoryFunction = functions.Single()
     };
 
-    solidGroundPayload.AddArtifactJson("prompt", cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)] });
+    solidGroundPayload.AddArtifactJson("chatrequest", cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)] });
 
     await using var result = models.Sonnet35.Execute(cr, cancellationToken);
 
@@ -78,7 +78,7 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
     {
         if (message is ChatMessage cm)
         {
-            solidGroundPayload.AddArtifact("chatmessage", cm.Text);
+            solidGroundPayload.AddArtifact("response_chatmessage", cm.Text);
             Console.WriteLine(cm.Text);
         }
 

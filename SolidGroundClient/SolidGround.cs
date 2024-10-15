@@ -99,12 +99,12 @@ public class SolidGroundSession(
         Request.Body.Position = 0;
         await Request.Body.CopyToAsync(memoryStream);
         Request.Body.Position = pos;
-        
+
         _capturedRequest = new()
         {
             ["body_base64"] = Convert.ToBase64String(memoryStream.ToArray()),
             ["content_type"] = Request.ContentType,
-            ["basepath"] = Request.PathBase.Value ?? throw new ArgumentException("Base path cannot be null."),
+            ["basepath"] = Request.Scheme + "://" + Request.Host,
             ["route"] = Request.Path.Value,
         };
 

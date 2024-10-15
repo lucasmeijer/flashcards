@@ -1,16 +1,16 @@
+using System.Text;
 using System.Text.Json;
 using Amazon.BedrockRuntime.Model;
 using LanguageModels;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Server;
+using SolidGroundClient;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddCheck("Health", () => HealthCheckResult.Healthy("OK"));
 builder.Services.AddLanguageModels();
-builder.Services.AddSolidGround();
+builder.Services.AddSolidGround<FlashCardsSolidGroundVariables>();
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
@@ -29,18 +29,17 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseHealthChecks("/up");
 
-app.MapPost("/fake", () =>
-{
-    return Results.Json(new Quiz("Nederlands", "Neppe quiz", [
-        new("wie is de beste", "lucas", "staat in je boek"),
-        new("wat is 4+4", "8", "is gewoon zo"),
-        new("leg uit wat plagiaat is", "dat je iets pikt van een ander zonder te zeggen dat dat zo is", "pagina 3"),
-        new("wat is lucas zn programmeertaal","C#", "lucas vragen"),
-    ]));
-});
+app.MapSolidGroundEndpoint();
+
+app.MapPost("/fake", () => Results.Json(new Quiz("Nederlands", "Neppe quiz", [
+    new("wie is de beste", "lucas", "staat in je boek"),
+    new("wat is 4+4", "8", "is gewoon zo"),
+    new("leg uit wat plagiaat is", "dat je iets pikt van een ander zonder te zeggen dat dat zo is", "pagina 3"),
+    new("wat is lucas zn programmeertaal","C#", "lucas vragen"),
+])));
 
 app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken cancellationToken, HttpRequest httpRequest,
-    SolidGroundPayload solidGroundPayload) =>
+    SolidGroundSession solidGroundPayload, FlashCardsSolidGroundVariables variables) =>
 {
     await solidGroundPayload.CaptureRequestAsync();
 
@@ -55,38 +54,23 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
         var base64 = await file.ToBase64Async();
         imageMessages.Add(new ImageMessage("user", file.ContentType, base64));
     }
+
     
+    var systemPrompt = variables.SystemPrompt.Value;
     var cr = new ChatRequest()
     {
-        SystemPrompt = "You are a excellent empathetic tutor that helps students learn",
+        SystemPrompt = systemPrompt,
         Messages =
         [
-            new ChatMessage("user", $"""
-                                     You will receive one or more photos taken of learning material, often a school book.
-                                     Your job is to read all the learning material, and produce a series of quiz questions that can be used by a student to quiz themselves to see if they understand the material.
-
-                                     You should think in steps:
-                                     - read the material closely.
-                                     - write into <genre></genre> what kind of learning material is in the photos.
-                                     - if the genre is a vocabulary test, analyze which language is the language to learn, and which is the known language. write to <language_to_learn> and <known_language>.
-                                       use the known language for all your quiz questions and quiz answers.
-                                     - if the genre is not cross language learning, write the language used in the material into <language> and use this for all your quiz questions and quiz answers.
-                                     - If the genre is like a text the student wants to learn, write a structured overview of the material in <structuredoverview>.
-                                     - write the topic of the learning material into <topic></topic>
-                                     - first lets only write the questions for the quiz into <questions></questions>.
-                                     - If the material is a vocabulary test, make the questions just be only the input word, and the answer just be the output word. make a question for every vocabulary word in the input material. 
-                                     - Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
-                                     - now call the {functions.Single().Name} tool. 
-                                     """),
+            new ChatMessage("user", variables.Prompt.Value),
             ..imageMessages
         ],
         Functions = functions,
-        Temperature = 0.5f,
+        Temperature = variables.Temperature.Value,
         //MandatoryFunction = functions.Single()
     };
 
-    solidGroundPayload.AddArtifactJson("prompt",
-        cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)] });
+    solidGroundPayload.AddArtifactJson("prompt", cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)] });
 
     await using var result = models.Sonnet35.Execute(cr, cancellationToken);
 
@@ -112,7 +96,23 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
             var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options) ??
                        throw new InternalServerException("Unparseable functioninvocation");
 
-            solidGroundPayload.AddResultJson(quiz);
+            
+            solidGroundPayload.AddResult(FlatTextOf(quiz));
+
+            string FlatTextOf(Quiz quiz)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine(quiz.Title);
+                sb.AppendLine(quiz.Language);
+                sb.AppendLine();
+                foreach (var question in quiz.Questions)
+                {
+                    sb.AppendLine("Q:" +question.Question);
+                    sb.AppendLine("A:" +question.Answer);
+                }
+
+                return sb.ToString();
+            }
 
             return Results.Json(quiz);
         }

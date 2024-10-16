@@ -90,6 +90,7 @@ public class SolidGroundSession(
     JsonObject? _capturedRequest;
     JsonObject _outputs = new();
     JsonObject _variables = new();
+    string? _name = null;
     
     public async Task CaptureRequestAsync()
     {
@@ -143,9 +144,11 @@ public class SolidGroundSession(
             request = _capturedRequest ?? throw new ArgumentException("Captured request is null"),
             outputs = _outputs,
             variables = _variables,
+            name = _name
         });
     }
-    
+
+    public void AddName(string name) => _name = name;
     public void AddResult(string value) => AddArtifact("result", value);
     public void AddResultJson(object value) => AddArtifactJson("result", value);
     public void AddArtifact(string name, string value) => _outputs[name] = value;

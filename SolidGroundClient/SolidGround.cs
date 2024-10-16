@@ -86,7 +86,7 @@ public class SolidGroundSession(
 
     string? _serviceBaseUrl = config["SOLIDGROUND_BASE_URL"];
     
-    string? _outputEndPoint = httpContext.Request.Headers.TryGetValue("SolidGroundOutputEndPoint", out var endpoint) ? endpoint.ToString() : null;
+    string? _outputId = httpContext.Request.Headers.TryGetValue("SolidGroundOutputId", out var outputIdValues) ? outputIdValues.ToString() : null;
     JsonObject? _capturedRequest;
     JsonObject _outputs = new();
     JsonObject _variables = new();
@@ -116,27 +116,27 @@ public class SolidGroundSession(
             _variables[variable.Name] = variable.ValueAsString;
         }
         
-        if (_serviceBaseUrl != null || _outputEndPoint != null)
+        if (_serviceBaseUrl != null)
             httpContext.Response.OnCompleted(SendPayload);
     }
 
     async Task SendPayload()
     {
-        if (_outputEndPoint != null)
+        if (_outputId != null)
         {
             var jsonObject = new JsonObject()
             {
                 ["outputs"] = _outputs,
                 ["variables"] = _variables,
             };
-            
+
             //This is a rerun being executed by solidground. In this scenario we only have to upload the output under the requested id.
             var serialize = JsonSerializer.Serialize(jsonObject);
-            
-            await httpClient.PostAsync(_outputEndPoint, new StringContent(serialize, Encoding.UTF8, "application/json"));
+
+            await httpClient.PostAsync($"{_serviceBaseUrl}/api/output/{_outputId}", new StringContent(serialize, Encoding.UTF8, "application/json"));
             return;
         }
-        
+
         //this is the normal production flow where we emit a complete execution + input + output
         await httpClient.PostAsJsonAsync($"{_serviceBaseUrl}/api/input", new
         {

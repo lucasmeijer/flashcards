@@ -96,7 +96,7 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
             var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options) ??
                        throw new InternalServerException("Unparseable functioninvocation");
 
-            
+            solidGroundPayload.AddName(quiz.Title);
             solidGroundPayload.AddResult(FlatTextOf(quiz));
 
             string FlatTextOf(Quiz quiz)
@@ -107,8 +107,9 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
                 sb.AppendLine();
                 foreach (var question in quiz.Questions)
                 {
-                    sb.AppendLine("Q:" +question.Question);
-                    sb.AppendLine("A:" +question.Answer);
+                    sb.AppendLine("Q: " +question.Question);
+                    sb.AppendLine("A: " +question.Answer);
+                    sb.AppendLine();
                 }
 
                 return sb.ToString();

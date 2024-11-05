@@ -1,6 +1,11 @@
-@Server_HostAddress = https://localhost:7220
+#@Server_HostAddress = https://localhost:7220
+@Server_HostAddress = https://flashcards.lucasmeijer.com
 
 GET {{Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+### SolidGroundEndpoint
+GET {{Server_HostAddress}}/solidground
 Accept: application/json
 
 ### SendPostPayload

@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LanguageModels\LanguageModels.csproj" />
-    <ProjectReference Include="..\..\SolidGround\SolidGroundClient\SolidGroundClient.csproj" />
+      <ProjectReference Include="..\SolidGroundClient\SolidGroundClient.csproj" />
   </ItemGroup>
 
 </Project>

@@ -21,9 +21,10 @@ class FlashCardsSolidGroundVariables : SolidGroundVariables
         - first lets only write the questions for the quiz into <questions></questions>.
         - If the material is a vocabulary test, make the questions just be only the input word, and the answer just be the output word. make a question for every vocabulary word in the input material. 
         - Keep writing questions to the point where if a student can answer them all correctly, she fully understands all provided material.
-        - now call the ${functions.Single().Name}) tool. 
+        - now call the **FUNCTION** tool. 
         """);
     
     public readonly SolidGroundVariable<string> SystemPrompt = new("SystemPrompt", "You are a excellent empathetic tutor that helps students learn");
     public readonly SolidGroundVariable<float> Temperature = new("Temperature", 0.5f);
+    public readonly SolidGroundVariable<string> LanguageModel = new("LanguageModel", "sonnet35old");
 }

@@ -32,10 +32,10 @@ app.UseHealthChecks("/up");
 app.MapSolidGroundEndpoint();
 
 app.MapPost("/fake", () => Results.Json(new Quiz("Nederlands", "Neppe quiz", [
-    new("wie is de beste", "lucas", "staat in je boek"),
-    new("wat is 4+4", "8", "is gewoon zo"),
-    new("leg uit wat plagiaat is", "dat je iets pikt van een ander zonder te zeggen dat dat zo is", "pagina 3"),
-    new("wat is lucas zn programmeertaal","C#", "lucas vragen"),
+    new("wie is de beste", "lucas"),
+    new("wat is 4+4", "8"),
+    new("leg uit wat plagiaat is", "copieren"),
+    new("wat is lucas zn programmeertaal","csharp"),
 ])));
 
 app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken cancellationToken, HttpRequest httpRequest,
@@ -62,7 +62,7 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
         SystemPrompt = systemPrompt,
         Messages =
         [
-            new ChatMessage("user", variables.Prompt.Value),
+            new ChatMessage("user", variables.Prompt.Value.Replace("**FUNCTION**", functions.Single().Name)),
             ..imageMessages
         ],
         Functions = functions,
@@ -72,6 +72,15 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
 
     solidGroundPayload.AddArtifactJson("chatrequest", cr with { Messages = [..cr.Messages.Where(m => m is not ImageMessage)] });
 
+    ILanguageModel ModelToUse()
+    {
+        return variables.LanguageModel.Value switch
+        {
+            "sonnet35old" => models.Sonnet35,
+            "sonnet35new" => models.Sonnet35New
+        };
+    }
+    
     await using var result = models.Sonnet35.Execute(cr, cancellationToken);
 
     await foreach (var message in result.ReadCompleteMessagesAsync())
@@ -130,11 +139,9 @@ record Quiz(
 
 record Question2(
     [DescriptionForLanguageModel("A question about the material")]
-    string Question, 
+    string Question,
     [DescriptionForLanguageModel("The correct answer to the question. do not repeat the question in the answer.")]
-    string Answer, 
-    [DescriptionForLanguageModel("A sentence that the tutor could speak to the student to tell her where she can find the answer to this question in the material she took photos of")]
-    string LocationOfAnswerInMaterial);
+    string Answer);
 
 class Functions2
 {

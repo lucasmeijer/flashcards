@@ -84,7 +84,6 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
 
         if (message is FunctionInvocation functionInvocation)
         {
-
             var s = JsonSerializer.Serialize(functionInvocation.Parameters.RootElement,
                 new JsonSerializerOptions { WriteIndented = true });
             Console.WriteLine(s);
@@ -96,7 +95,7 @@ app.MapPost("/photos", async (AnthropicLanguageModels models, CancellationToken 
             var quiz = functionInvocation.Parameters.Deserialize<Quiz>(options) ??
                        throw new InternalServerException("Unparseable functioninvocation");
 
-            solidGroundPayload.AddName(quiz.Title);
+            //solidGroundPayload.AddName(quiz.Title);
             solidGroundPayload.AddResult(FlatTextOf(quiz));
 
             string FlatTextOf(Quiz quiz)
